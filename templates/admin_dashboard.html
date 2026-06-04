@@ -1,13 +1,33 @@
-{% extends "base.html" %}{% block title %}管理ダッシュボード{% endblock %}
-{% block content %}<div class="dashboard"><h2>履歴書一覧</h2>
-<form method="get" class="search-bar">
-<input type="text" name="q" value="{{ query }}" placeholder="氏名で検索...">
-<button type="submit" class="btn">検索</button>
-{% if query %}<a href="{{ url_for('admin_dashboard') }}">クリア</a>{% endif %}</form>
-{% if records %}<table><thead><tr><th>氏名</th><th>ふりがな</th><th>メール</th><th>作成日時</th><th>操作</th></tr></thead><tbody>
-{% for r in records %}<tr><td>{{ r.name }}</td><td>{{ r.kana }}</td><td>{{ r.email }}</td>
-<td>{{ r.created[:16].replace('T',' ') }}</td>
-<td><a class="btn btn-sm" href="{{ url_for('admin_download', pdf_id=r.id) }}">📥 DL</a></td></tr>{% endfor %}
-</tbody></table>
-{% else %}<p class="empty">{% if query %}「{{ query }}」に一致する履歴書はありません。{% else %}まだ履歴書がありません。{% endif %}</p>{% endif %}
-</div>{% endblock %}
+{% extends "base.html" %}
+{% block title %}管理ダッシュボード{% endblock %}
+{% block content %}
+<div class="dashboard">
+  <h2>履歴書一覧</h2>
+  <form method="get" class="search-bar">
+    <input type="text" name="q" value="{{ query }}" placeholder="氏名で検索...">
+    <button type="submit" class="btn">検索</button>
+    {% if query %}<a href="{{ url_for('admin_dashboard') }}">クリア</a>{% endif %}
+  </form>
+
+  {% if records %}
+  <table>
+    <thead>
+      <tr><th>氏名</th><th>ふりがな</th><th>メール</th><th>作成日時</th><th>操作</th></tr>
+    </thead>
+    <tbody>
+    {% for r in records %}
+      <tr>
+        <td>{{ r.name }}</td>
+        <td>{{ r.kana }}</td>
+        <td>{{ r.email }}</td>
+        <td>{{ r.created[:16].replace('T',' ') }}</td>
+        <td><a class="btn btn-sm" href="{{ url_for('admin_download', pdf_id=r.id) }}">📥 DL</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">{% if query %}「{{ query }}」に一致する履歴書はありません。{% else %}まだ履歴書がありません。{% endif %}</p>
+  {% endif %}
+</div>
+{% endblock %}

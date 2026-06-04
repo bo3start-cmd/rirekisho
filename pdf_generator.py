@@ -1,4 +1,5 @@
-import os
+"""履歴書PDF生成モジュール"""
+import os, math
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
@@ -7,207 +8,325 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib import colors
 from reportlab.lib.utils import ImageReader
 
+# ── フォント設定 ──────────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-FONT_JP  = os.path.join(BASE_DIR, "fonts", "DroidSansFallbackFull.ttf")
-FONT_LAT = os.path.join(BASE_DIR, "fonts", "DejaVuSans.ttf")
-_reg = False
+FONT_JP_PATH  = os.path.join(BASE_DIR, "fonts", "DroidSansFallbackFull.ttf")
+FONT_LAT_PATH = os.path.join(BASE_DIR, "fonts", "DejaVuSans.ttf")
+
+_fonts_registered = False
 
 def _ensure_fonts():
-    global _reg
-    if _reg: return
-    pdfmetrics.registerFont(TTFont("JA",  FONT_JP))
-    pdfmetrics.registerFont(TTFont("LAT", FONT_LAT))
-    _reg = True
+    global _fonts_registered
+    if _fonts_registered:
+        return
+    if not os.path.exists(FONT_JP_PATH) or not os.path.exists(FONT_LAT_PATH):
+        raise RuntimeError(
+            "フォントが見つかりません。fonts/ フォルダに "
+            "DroidSansFallbackFull.ttf と DejaVuSans.ttf を配置してください。"
+        )
+    pdfmetrics.registerFont(TTFont("JA",  FONT_JP_PATH))
+    pdfmetrics.registerFont(TTFont("LAT", FONT_LAT_PATH))
+    _fonts_registered = True
 
-PH,PW_MM=297,210; TM,BM,LM,RM=15,12,15,15
-UW=PW_MM-LM-RM; x0=LM; THIN=0.5
-CG=colors.HexColor("#7a8fbb")
+# ── レイアウト定数 ────────────────────────────────────────────────
+PH, PW_MM = 297, 210
+TM, BM, LM, RM = 15, 12, 15, 15
+UW = PW_MM - LM - RM
+x0 = LM
+THIN = 0.5
+C_GRID = colors.HexColor("#7a8fbb")
 
-def _ascii(c): return ord(c)<128
-def _fn(c): return "LAT" if _ascii(c) else "JA"
-def mw(cv,t,sz): return sum(cv.stringWidth(c,_fn(c),sz) for c in str(t))
+def _is_ascii(ch): return ord(ch) < 128
+def _font_for(ch): return "LAT" if _is_ascii(ch) else "JA"
 
-def dm(cv,xp,yp,t,sz):
-    x=xp
-    for c in str(t):
-        f=_fn(c); cv.setFont(f,sz); cv.drawString(x,yp,c)
-        x+=cv.stringWidth(c,f,sz)
+def mixed_width(cv, text, sz):
+    return sum(cv.stringWidth(ch, _font_for(ch), sz) for ch in str(text))
 
-def T(cv,x,y,s,sz=13,al="left"):
-    cv.setFillColor(colors.black); s=str(s)
-    if al=="center": w=mw(cv,s,sz)/mm; dm(cv,(x-w/2)*mm,y*mm,s,sz)
-    elif al=="right": w=mw(cv,s,sz)/mm; dm(cv,(x-w)*mm,y*mm,s,sz)
-    else: dm(cv,x*mm,y*mm,s,sz)
+def draw_mixed(cv, x_pt, y_pt, text, sz):
+    x = x_pt
+    for ch in str(text):
+        f = _font_for(ch)
+        cv.setFont(f, sz)
+        cv.drawString(x, y_pt, ch)
+        x += cv.stringWidth(ch, f, sz)
 
-def sol(cv,lw=THIN): cv.setDash([]); cv.setLineWidth(lw); cv.setStrokeColor(CG)
-def das(cv): cv.setDash(4,3); cv.setLineWidth(0.5); cv.setStrokeColor(CG)
-def hl(cv,x1,y,x2,d=False):
-    das(cv) if d else sol(cv)
-    cv.line(x1*mm,y*mm,x2*mm,y*mm); sol(cv)
-def vl(cv,x,y1,y2): sol(cv); cv.line(x*mm,y1*mm,x*mm,y2*mm)
-def bx(cv,x,y,w,h,lw=THIN): sol(cv,lw); cv.rect(x*mm,y*mm,w*mm,h*mm,fill=0,stroke=1)
+def T(cv, x, y, s, sz=13, al="left"):
+    cv.setFillColor(colors.black)
+    s = str(s)
+    if al == "center":
+        w = mixed_width(cv, s, sz) / mm
+        draw_mixed(cv, (x - w/2)*mm, y*mm, s, sz)
+    elif al == "right":
+        w = mixed_width(cv, s, sz) / mm
+        draw_mixed(cv, (x - w)*mm, y*mm, s, sz)
+    else:
+        draw_mixed(cv, x*mm, y*mm, s, sz)
 
-def wl(cv,t,mw_mm,sz):
-    if not str(t).strip(): return [""]
-    lines,cur=[],""
-    for c in str(t):
-        test=cur+c
-        if mw(cv,test,sz)>(mw_mm-4)*mm: lines.append(cur) if cur else None; cur=c
-        else: cur=test
+def solid(cv, lw=THIN): cv.setDash([]); cv.setLineWidth(lw); cv.setStrokeColor(C_GRID)
+def dashed(cv): cv.setDash(4,3); cv.setLineWidth(0.5); cv.setStrokeColor(C_GRID)
+def hline(cv, x1, y, x2, dash=False):
+    if dash: dashed(cv)
+    else: solid(cv)
+    cv.line(x1*mm, y*mm, x2*mm, y*mm); solid(cv)
+def vline(cv, x, y1, y2): solid(cv); cv.line(x*mm, y1*mm, x*mm, y2*mm)
+def box(cv, x, y, w, h, lw=THIN): solid(cv, lw); cv.rect(x*mm, y*mm, w*mm, h*mm, fill=0, stroke=1)
+
+def wrap_lines(cv, text, max_w_mm, sz):
+    if not str(text).strip(): return [""]
+    lines, cur = [], ""
+    for ch in str(text):
+        test = cur + ch
+        if mixed_width(cv, test, sz) > (max_w_mm - 4)*mm:
+            if cur: lines.append(cur)
+            cur = ch
+        else:
+            cur = test
     if cur: lines.append(cur)
     return lines or [""]
 
-def dtc(cv,x,y,w,h,t,mx=24,mn=8,al="left"):
-    if not t: return
-    sh=max(mn,int(h*0.60*2.835)); st=min(mx,sh)
-    for sz in range(st,mn-1,-1):
-        if mw(cv,t,sz)<=(w-4)*mm:
-            my=y+h/2-sz*0.127
-            if al=="center": T(cv,x+w/2,my,t,sz,"center")
-            elif al=="right": T(cv,x+w-2,my,t,sz,"right")
-            else: T(cv,x+3,my,t,sz)
+def draw_text_in_cell(cv, x, y, w, h, text, max_sz=24, min_sz=8, align="left"):
+    if not text: return
+    PAD = 4
+    sz_from_h = max(min_sz, int(h * 0.60 * 2.835))
+    start_sz  = min(max_sz, sz_from_h)
+    for sz in range(start_sz, min_sz-1, -1):
+        if mixed_width(cv, text, sz) <= (w-PAD)*mm:
+            mid_y = y + h/2 - sz*0.127
+            if align=="center": T(cv, x+w/2, mid_y, text, sz, "center")
+            elif align=="right": T(cv, x+w-2, mid_y, text, sz, "right")
+            else: T(cv, x+3, mid_y, text, sz)
             return
-    sz=mn; ls=wl(cv,t,w,sz); lh=sz*1.5/mm
-    sy=y+h/2+(len(ls)-1)*lh/2-sz*0.127
-    for i,ln in enumerate(ls):
-        if al=="center": T(cv,x+w/2,sy-i*lh,ln,sz,"center")
-        elif al=="right": T(cv,x+w-2,sy-i*lh,ln,sz,"right")
-        else: T(cv,x+3,sy-i*lh,ln,sz)
+    sz = min_sz
+    lines = wrap_lines(cv, text, w, sz)
+    lh = sz*1.5/mm
+    start_y = y+h/2+(len(lines)-1)*lh/2-sz*0.127
+    for i,ln in enumerate(lines):
+        if align=="center": T(cv, x+w/2, start_y-i*lh, ln, sz, "center")
+        elif align=="right": T(cv, x+w-2, start_y-i*lh, ln, sz, "right")
+        else: T(cv, x+3, start_y-i*lh, ln, sz)
 
-def dtb(cv,x,yt,w,h,lines,sz=12):
-    lh=sz*1.55/mm; cy=yt-4
-    for ln in lines:
-        if cy-lh<yt-h+2: break
-        if not ln: cy-=lh*0.5; continue
-        for wln in wl(cv,ln,w,sz):
-            if cy-lh<yt-h+2: break
-            T(cv,x+3,cy-sz*0.127,wln,sz); cy-=lh
+def draw_text_block(cv, x, y_top, w, h, lines, sz=12):
+    lh = sz*1.55/mm
+    cur_y = y_top - 4
+    for line in lines:
+        if cur_y - lh < y_top - h + 2: break
+        if line == "": cur_y -= lh*0.5; continue
+        for wl in wrap_lines(cv, line, w, sz):
+            if cur_y - lh < y_top - h + 2: break
+            T(cv, x+3, cur_y-sz*0.127, wl, sz)
+            cur_y -= lh
 
-CY=20;CM=15;CE=UW-CY-CM
+CY=20; CM=15; CE=UW-CY-CM
 
-def dth(cv,x,y,lb="学歴・職歴"):
-    RH=12; bx(cv,x,y-RH,CY,RH); bx(cv,x+CY,y-RH,CM,RH); bx(cv,x+CY+CM,y-RH,CE,RH)
-    dtc(cv,x,y-RH,CY,RH,"年",al="center"); dtc(cv,x+CY,y-RH,CM,RH,"月",al="center")
-    dtc(cv,x+CY+CM,y-RH,CE,RH,lb,al="center"); return y-RH
+def draw_table_header(cv, x, y, label="学歴・職歴"):
+    RH=12; box(cv,x,y-RH,CY,RH); box(cv,x+CY,y-RH,CM,RH); box(cv,x+CY+CM,y-RH,CE,RH)
+    draw_text_in_cell(cv,x,y-RH,CY,RH,"年",align="center")
+    draw_text_in_cell(cv,x+CY,y-RH,CM,RH,"月",align="center")
+    draw_text_in_cell(cv,x+CY+CM,y-RH,CE,RH,label,align="center")
+    return y-RH
 
-def dtr(cv,x,y,rh,yr="",mo="",ev="",sec=False,end=False):
-    bx(cv,x,y-rh,CY,rh); sol(cv,THIN)
+def draw_table_row(cv, x, y, rh, yr="", mo="", ev="", section=False, end=False):
+    box(cv,x,y-rh,CY,rh); solid(cv,THIN)
     cv.rect((x+CY)*mm,(y-rh)*mm,CM*mm,rh*mm,fill=0,stroke=1)
-    bx(cv,x+CY+CM,y-rh,CE,rh)
-    dtc(cv,x,y-rh,CY,rh,yr,al="center"); dtc(cv,x+CY,y-rh,CM,rh,mo,al="center")
-    if sec: dtc(cv,x+CY+CM,y-rh,CE,rh,ev,al="center")
-    elif end: dtc(cv,x+CY+CM,y-rh,CE,rh,ev,al="right")
-    else: dtc(cv,x+CY+CM,y-rh,CE,rh,ev)
+    box(cv,x+CY+CM,y-rh,CE,rh)
+    draw_text_in_cell(cv,x,y-rh,CY,rh,yr,align="center")
+    draw_text_in_cell(cv,x+CY,y-rh,CM,rh,mo,align="center")
+    if section:   draw_text_in_cell(cv,x+CY+CM,y-rh,CE,rh,ev,align="center")
+    elif end:     draw_text_in_cell(cv,x+CY+CM,y-rh,CE,rh,ev,align="right")
+    else:         draw_text_in_cell(cv,x+CY+CM,y-rh,CE,rh,ev)
     return y-rh
 
-def _bej(d):
-    rows=[("","","学歴",True,False)]
+# ════════════════════════════════════════════════════════════════
+def generate_resume(data: dict, out_path: str):
+    """
+    data キー:
+      name, kana, birth_date, age, gender, zip_code, address,
+      address_kana, tel, email,
+      school_name, school_grad_year, school_grad_month,
+      college_name, college_grad_year, college_grad_month,
+      jobs: list of {company, type, start_year, start_month,
+                     end_year, end_month, position}
+      licenses: list of {year, month, name}
+      pr_text, wish_text, photo_path (optional)
+      created_date
+    """
+    _ensure_fonts()
+    cv = canvas.Canvas(out_path, pagesize=A4)
+
+    # ── PAGE 1 ──────────────────────────────────────────────────
+    _draw_page1(cv, data)
+    cv.showPage()
+    _draw_page2(cv, data)
+    cv.save()
+
+def _draw_page1(cv, d):
+    T(cv, x0, 297-TM-3, "履　歴　書", 20)
+    T(cv, x0+UW, 297-TM-3, d.get("created_date",""), 11, "right")
+
+    PW_=28; PH_=36; PX=x0+UW-PW_; PERS_TOP=297-TM-8
+
+    # 写真
+    photo = d.get("photo_path","")
+    if photo and os.path.exists(photo):
+        try:
+            ir = ImageReader(photo)
+            iw,ih = ir.getSize()
+            scale = min(PW_*mm/iw, PH_*mm/ih)
+            dw,dh = iw*scale, ih*scale
+            ix = PX*mm+(PW_*mm-dw)/2
+            iy = (PERS_TOP-PH_)*mm+(PH_*mm-dh)/2
+            cv.drawImage(photo, ix, iy, width=dw, height=dh,
+                         preserveAspectRatio=True, mask='auto')
+            box(cv, PX, PERS_TOP-PH_, PW_, PH_, THIN)
+        except:
+            _draw_photo_placeholder(cv, PX, PERS_TOP, PW_, PH_)
+    else:
+        _draw_photo_placeholder(cv, PX, PERS_TOP, PW_, PH_)
+
+    IW=UW-PW_; LW=16; y=PERS_TOP
+
+    # ふりがな
+    RH1=9; y-=RH1
+    T(cv,x0+1,y+2,"ふりがな",8)
+    draw_text_in_cell(cv,x0+LW,y,IW-LW,RH1,d.get("kana",""))
+    hline(cv,x0,y,x0+IW,dash=True); vline(cv,x0,y,y+RH1)
+
+    # 名前
+    RH2=16; y-=RH2
+    T(cv,x0+1,y+4,"名前",9)
+    draw_text_in_cell(cv,x0+LW,y,IW-LW,RH2,d.get("name",""),max_sz=20)
+    hline(cv,x0,y,x0+IW); vline(cv,x0,y,y+RH2)
+
+    # 生年月日・性別
+    RH3=11; y-=RH3
+    birth=d.get("birth_date",""); age=d.get("age",""); gender=d.get("gender","男")
+    T(cv,x0+3,y+3,f"{birth}生（満 {age} 歳）",14)
+    GENDER_X=x0+IW-30; GENDER_Y=y+RH3/2
+    cv.setFont("LAT",13); cv.setFillColor(colors.black)
+    cv.drawString(GENDER_X*mm,(GENDER_Y-4.5)*mm,"男" if gender=="男" else "女")
+    char_w=cv.stringWidth("男","JA",13)/mm
+    cx=GENDER_X+char_w/2; cy_=GENDER_Y-1.5
+    if gender=="男":
+        cv.setStrokeColor(colors.black); cv.setLineWidth(0.8)
+        cv.ellipse((cx-4)*mm,(cy_-4)*mm,(cx+4)*mm,(cy_+4.5)*mm,fill=0,stroke=1)
+        cv.setLineWidth(0.5)
+    T(cv,GENDER_X+char_w+1,GENDER_Y-4.5,"・女" if gender=="男" else "・男",13)
+    hline(cv,x0,y,x0+UW); vline(cv,x0,y,y+RH3)
+
+    # 住所ゾーン
+    IW_L=115; IW_R=UW-IW_L
+
+    RH4=8; y-=RH4
+    draw_text_in_cell(cv,x0,y,LW,RH4,"ふりがな",max_sz=8)
+    draw_text_in_cell(cv,x0+LW,y,IW_L-LW,RH4,d.get("address_kana",""))
+    draw_text_in_cell(cv,x0+IW_L,y,IW_R,RH4,f'電話　{d.get("tel","")}')
+    hline(cv,x0,y,x0+UW,dash=True)
+    vline(cv,x0,y,y+RH4); vline(cv,x0+IW_L,y,y+RH4); vline(cv,x0+UW,y,y+RH4)
+
+    RH5=20; y-=RH5
+    draw_text_in_cell(cv,x0,y,LW,RH5,"現住所",max_sz=11)
+    addr_w=IW_L-LW
+    T(cv,x0+LW+2,y+RH5-6,d.get("zip_code",""),13)
+    addr=d.get("address","")
+    for sz in range(13,7,-1):
+        if mixed_width(cv,addr,sz)<=(addr_w-3)*mm:
+            T(cv,x0+LW+2,y+4,addr,sz); break
+    T(cv,x0+IW_L+2,y+RH5-6,"Email",12)
+    T(cv,x0+IW_L+2,y+4,d.get("email",""),10)
+    hline(cv,x0,y,x0+UW)
+    vline(cv,x0,y,y+RH5); vline(cv,x0+IW_L,y,y+RH5); vline(cv,x0+UW,y,y+RH5)
+
+    RH6=8; y-=RH6
+    draw_text_in_cell(cv,x0,y,LW,RH6,"ふりがな",max_sz=8)
+    draw_text_in_cell(cv,x0+IW_L,y,IW_R,RH6,"電話")
+    hline(cv,x0,y,x0+UW,dash=True)
+    vline(cv,x0,y,y+RH6); vline(cv,x0+IW_L,y,y+RH6); vline(cv,x0+UW,y,y+RH6)
+
+    RH7=16; y-=RH7
+    draw_text_in_cell(cv,x0,y,LW,RH7,"連絡先",max_sz=11)
+    draw_text_in_cell(cv,x0+LW,y,IW_L-LW,RH7,"〒　（現住所以外に連絡を希望する場合のみ入力）",max_sz=10)
+    draw_text_in_cell(cv,x0+IW_L,y,IW_R,RH7,"Email",max_sz=12)
+    hline(cv,x0,y,x0+UW)
+    vline(cv,x0,y,y+RH7); vline(cv,x0+IW_L,y,y+RH7); vline(cv,x0+UW,y,y+RH7)
+    hline(cv,x0,PERS_TOP,x0+UW)
+
+    # 学歴・職歴テーブル
+    GAP=5; ty=y-GAP; HDR_H=12; avail=ty-BM-HDR_H
+    rows = _build_edu_job_rows(d)
+    N=15; RH=avail/N
+    ty=draw_table_header(cv,x0,ty)
+    for i in range(N):
+        if i<len(rows): yr,mo,ev,sec,end=rows[i]
+        else: yr,mo,ev,sec,end="","","",False,False
+        ty=draw_table_row(cv,x0,ty,RH,yr,mo,ev,sec,end)
+
+def _draw_photo_placeholder(cv, PX, PERS_TOP, PW_, PH_):
+    box(cv,PX,PERS_TOP-PH_,PW_,PH_,THIN)
+    T(cv,PX+PW_/2,PERS_TOP-PH_/2+3,"写真貼付欄",8,"center")
+    T(cv,PX+PW_/2,PERS_TOP-PH_/2-2,"縦4cm×横3cm",7,"center")
+
+def _build_edu_job_rows(d):
+    rows=[]
+    rows.append(("","","学歴",True,False))
     sn=d.get("school_name",""); sy=d.get("school_grad_year",""); sm=d.get("school_grad_month","")
     if sn:
-        ey=str(int(sy)-3) if sy else ""
-        rows+= [(ey,"4",f"{sn}　入学",False,False),(sy,sm,"同校　卒業",False,False)]
+        enter_y=str(int(sy)-3) if sy else ""; rows.append((enter_y,"4",f"{sn}　入学",False,False))
+        rows.append((sy,sm,f"同校　卒業",False,False))
     cn=d.get("college_name",""); cy2=d.get("college_grad_year",""); cm2=d.get("college_grad_month","")
     if cn:
-        ey2=str(int(cy2)-2) if cy2 else ""
-        rows+=[(ey2,"4",f"{cn}　入学",False,False),(cy2,cm2,"同校　卒業",False,False)]
-    rows+=[("","","",False,False),("","","職歴",True,False)]
+        enter_y2=str(int(cy2)-2) if cy2 else ""; rows.append((enter_y2,"4",f"{cn}　入学",False,False))
+        rows.append((cy2,cm2,"同校　卒業",False,False))
+    rows.append(("","","",False,False))
+    rows.append(("","","職歴",True,False))
     for j in d.get("jobs",[]):
         rows.append((j.get("start_year",""),j.get("start_month",""),
                      f'{j.get("company","")}　入社（{j.get("type","")}）',False,False))
         ey=j.get("end_year",""); em=j.get("end_month","")
-        rows.append((ey,em,"同社　退社",False,False) if ey else ("","","現在に至る",False,False))
+        if ey: rows.append((ey,em,"同社　退社",False,False))
+        else:  rows.append(("","","現在に至る",False,False))
     return rows
 
-def _p1(cv,d):
-    T(cv,x0,297-TM-3,"履　歴　書",20); T(cv,x0+UW,297-TM-3,d.get("created_date",""),11,"right")
-    PW_=28;PH_=36;PX=x0+UW-PW_;PT=297-TM-8
-    ph=d.get("photo_path","")
-    if ph and os.path.exists(ph):
-        try:
-            ir=ImageReader(ph); iw,ih=ir.getSize(); sc=min(PW_*mm/iw,PH_*mm/ih)
-            dw,dh=iw*sc,ih*sc; ix=PX*mm+(PW_*mm-dw)/2; iy=(PT-PH_)*mm+(PH_*mm-dh)/2
-            cv.drawImage(ph,ix,iy,width=dw,height=dh,preserveAspectRatio=True,mask='auto')
-            bx(cv,PX,PT-PH_,PW_,PH_,THIN)
-        except: _ph_box(cv,PX,PT,PW_,PH_)
-    else: _ph_box(cv,PX,PT,PW_,PH_)
-    IW=UW-PW_;LW=16;y=PT
-    RH1=9;y-=RH1
-    T(cv,x0+1,y+2,"ふりがな",8); dtc(cv,x0+LW,y,IW-LW,RH1,d.get("kana",""))
-    hl(cv,x0,y,x0+IW,d=True); vl(cv,x0,y,y+RH1)
-    RH2=16;y-=RH2
-    T(cv,x0+1,y+4,"名前",9); dtc(cv,x0+LW,y,IW-LW,RH2,d.get("name",""),mx=20)
-    hl(cv,x0,y,x0+IW); vl(cv,x0,y,y+RH2)
-    RH3=11;y-=RH3
-    T(cv,x0+3,y+3,f'{d.get("birth_date","")}生（満 {d.get("age","")} 歳）',14)
-    GX=x0+IW-30;GY=y+RH3/2; cv.setFont("LAT",13); cv.setFillColor(colors.black)
-    gn=d.get("gender","男"); cv.drawString(GX*mm,(GY-4.5)*mm,gn)
-    cw=cv.stringWidth(gn,"JA",13)/mm; cx=GX+cw/2; cy_=GY-1.5
-    if gn=="男":
-        cv.setStrokeColor(colors.black); cv.setLineWidth(0.8)
-        cv.ellipse((cx-4)*mm,(cy_-4)*mm,(cx+4)*mm,(cy_+4.5)*mm,fill=0,stroke=1); cv.setLineWidth(0.5)
-    T(cv,GX+cw+1,GY-4.5,"・女" if gn=="男" else "・男",13)
-    hl(cv,x0,y,x0+UW); vl(cv,x0,y,y+RH3)
-    IL=115;IR=UW-IL
-    RH4=8;y-=RH4
-    dtc(cv,x0,y,LW,RH4,"ふりがな",mx=8); dtc(cv,x0+LW,y,IL-LW,RH4,d.get("address_kana",""))
-    dtc(cv,x0+IL,y,IR,RH4,f'電話　{d.get("tel","")}')
-    hl(cv,x0,y,x0+UW,d=True)
-    vl(cv,x0,y,y+RH4); vl(cv,x0+IL,y,y+RH4); vl(cv,x0+UW,y,y+RH4)
-    RH5=20;y-=RH5
-    dtc(cv,x0,y,LW,RH5,"現住所",mx=11)
-    T(cv,x0+LW+2,y+RH5-6,d.get("zip_code",""),13)
-    addr=d.get("address",""); aw=IL-LW
-    for sz in range(13,7,-1):
-        if mw(cv,addr,sz)<=(aw-3)*mm: T(cv,x0+LW+2,y+4,addr,sz); break
-    T(cv,x0+IL+2,y+RH5-6,"Email",12); T(cv,x0+IL+2,y+4,d.get("email",""),10)
-    hl(cv,x0,y,x0+UW); vl(cv,x0,y,y+RH5); vl(cv,x0+IL,y,y+RH5); vl(cv,x0+UW,y,y+RH5)
-    RH6=8;y-=RH6
-    dtc(cv,x0,y,LW,RH6,"ふりがな",mx=8); dtc(cv,x0+IL,y,IR,RH6,"電話")
-    hl(cv,x0,y,x0+UW,d=True); vl(cv,x0,y,y+RH6); vl(cv,x0+IL,y,y+RH6); vl(cv,x0+UW,y,y+RH6)
-    RH7=16;y-=RH7
-    dtc(cv,x0,y,LW,RH7,"連絡先",mx=11)
-    dtc(cv,x0+LW,y,IL-LW,RH7,"〒　（現住所以外に連絡を希望する場合のみ入力）",mx=10)
-    dtc(cv,x0+IL,y,IR,RH7,"Email",mx=12)
-    hl(cv,x0,y,x0+UW); vl(cv,x0,y,y+RH7); vl(cv,x0+IL,y,y+RH7); vl(cv,x0+UW,y,y+RH7)
-    hl(cv,x0,PT,x0+UW)
-    GAP=5;ty=y-GAP;avail=ty-BM-12; rows=_bej(d); N=15; RH=avail/N
-    ty=dth(cv,x0,ty)
-    for i in range(N):
-        r=rows[i] if i<len(rows) else ("","","",False,False)
-        ty=dtr(cv,x0,ty,RH,*r)
+def _draw_page2(cv, d):
+    BOX_SZ=12; BOX_HDR=8; HDR_H=12; GAPS=3*3
+    pr_lines=[l for l in d.get("pr_text","").split("\n") if l or True][:12]
+    wish_lines=[l for l in d.get("wish_text","").split("\n") if l or True][:6]
 
-def _ph_box(cv,PX,PT,PW_,PH_):
-    bx(cv,PX,PT-PH_,PW_,PH_,THIN)
-    T(cv,PX+PW_/2,PT-PH_/2+3,"写真貼付欄",8,"center")
-    T(cv,PX+PW_/2,PT-PH_/2-2,"縦4cm×横3cm",7,"center")
+    def calc_h(lines,sz):
+        lh=sz*1.55/mm; total=BOX_HDR+4
+        for l in lines: total+=lh*0.5 if not l else lh
+        return total+4
 
-def _p2(cv,d):
-    BS=12;BH=8;HH=12;GS=3*3
-    pl=[l for l in d.get("pr_text","").split("\n")][:12]
-    wl2=[l for l in d.get("wish_text","").split("\n")][:6]
-    def ch(lines,sz):
-        lh=sz*1.55/mm; tot=BH+4
-        for l in lines: tot+=lh*0.5 if not l else lh
-        return tot+4
-    PH=max(ch(pl,BS),55); WH=max(ch(wl2,BS),35)
-    avt=(297-TM-BM)-(PH+WH+HH*2+GS); NE=max(3,int(avt/(11.5*2))); RH2=avt/(NE*2)
-    y=297-TM; y=dth(cv,x0,y)
-    for i in range(NE): y=dtr(cv,x0,y,RH2)
+    PR_H=max(calc_h(pr_lines,BOX_SZ),55)
+    WISH_H=max(calc_h(wish_lines,BOX_SZ),35)
+    TARGET_RH=11.5
+    avail_tables=(297-TM-BM)-(PR_H+WISH_H+HDR_H*2+GAPS)
+    N_each=max(3,int(avail_tables/(TARGET_RH*2)))
+    RH2=avail_tables/(N_each*2)
+
+    y=297-TM
+    y=draw_table_header(cv,x0,y)
+    for i in range(N_each): y=draw_table_row(cv,x0,y,RH2)
     y-=3
-    lr=[(l.get("year",""),l.get("month",""),l.get("name",""),False,False) for l in d.get("licenses",[])]
-    lr.append(("","","以上",False,True))
-    y=dth(cv,x0,y,lb="免許・資格")
-    for i in range(NE):
-        r=lr[i] if i<len(lr) else ("","","",False,False)
-        y=dtr(cv,x0,y,RH2,*r)
-    y-=3
-    bx(cv,x0,y-PH,UW,PH,THIN); T(cv,x0+2,y-BH+1,"志望動機・特技・アピールポイントなど",9)
-    hl(cv,x0,y-BH,x0+UW); dtb(cv,x0,y-BH,UW,PH-BH,pl,BS); y-=PH+3
-    bx(cv,x0,y-WH,UW,WH,THIN)
-    T(cv,x0+2,y-BH+1,"本人希望欄（特に給料・職種・勤務時間・勤務地・その他について希望があれば記入）",9)
-    hl(cv,x0,y-BH,x0+UW); dtb(cv,x0,y-BH,UW,WH-BH,wl2,BS)
 
-def generate_resume(data,out_path):
-    _ensure_fonts()
-    cv=canvas.Canvas(out_path,pagesize=A4)
-    _p1(cv,data); cv.showPage(); _p2(cv,data); cv.save()
+    lic_rows=[]
+    for lic in d.get("licenses",[]):
+        lic_rows.append((lic.get("year",""),lic.get("month",""),lic.get("name",""),False,False))
+    lic_rows.append(("","","以上",False,True))
+
+    y=draw_table_header(cv,x0,y,label="免許・資格")
+    for i in range(N_each):
+        if i<len(lic_rows): yr,mo,ev,sec,end=lic_rows[i]
+        else: yr,mo,ev,sec,end="","","",False,False
+        y=draw_table_row(cv,x0,y,RH2,yr,mo,ev,sec,end)
+    y-=3
+
+    box(cv,x0,y-PR_H,UW,PR_H,THIN)
+    T(cv,x0+2,y-BOX_HDR+1,"志望動機・特技・アピールポイントなど",9)
+    hline(cv,x0,y-BOX_HDR,x0+UW)
+    draw_text_block(cv,x0,y-BOX_HDR,UW,PR_H-BOX_HDR,pr_lines,BOX_SZ)
+    y-=PR_H+3
+
+    box(cv,x0,y-WISH_H,UW,WISH_H,THIN)
+    T(cv,x0+2,y-BOX_HDR+1,"本人希望欄（特に給料・職種・勤務時間・勤務地・その他について希望があれば記入）",9)
+    hline(cv,x0,y-BOX_HDR,x0+UW)
+    draw_text_block(cv,x0,y-BOX_HDR,UW,WISH_H-BOX_HDR,wish_lines,BOX_SZ)

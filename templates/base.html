@@ -1,8 +1,28 @@
-<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}履歴書作成{% endblock %}</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head>
-<body><header><div class="hi"><span class="logo">📄 履歴書自動作成</span>
-{% if session.get('admin') %}<nav><a href="{{ url_for('admin_dashboard') }}">管理画面</a><a href="{{ url_for('admin_logout') }}">ログアウト</a></nav>{% endif %}
-</div></header><main>
-{% with messages = get_flashed_messages() %}{% if messages %}<div class="flash">{{ messages[0] }}</div>{% endif %}{% endwith %}
-{% block content %}{% endblock %}</main></body></html>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <span class="logo">📄 履歴書自動作成</span>
+    {% if session.get('admin') %}
+    <nav>
+      <a href="{{ url_for('admin_dashboard') }}">管理画面</a>
+      <a href="{{ url_for('admin_logout') }}">ログアウト</a>
+    </nav>
+    {% endif %}
+  </div>
+</header>
+<main>
+{% with messages = get_flashed_messages() %}
+{% if messages %}<div class="flash">{{ messages[0] }}</div>{% endif %}
+{% endwith %}
+{% block content %}{% endblock %}
+</main>
+</body>
+</html>

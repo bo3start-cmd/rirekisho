@@ -1,5 +1,13 @@
-{% extends "base.html" %}{% block title %}送信完了{% endblock %}
-{% block content %}<div class="card center"><h1>✅ 送信完了</h1>
-<p>{{ name }} さんの履歴書PDFが生成されました。</p>
-<a class="btn" href="{{ url_for('download_public', pdf_id=pdf_id) }}">📥 PDFをダウンロード</a>
-<br><br><a href="{{ url_for('index') }}">← フォームに戻る</a></div>{% endblock %}
+{% extends "base.html" %}
+{% block title %}送信完了{% endblock %}
+{% block content %}
+<div class="card center">
+  <h1>✅ 送信完了</h1>
+  <p>{{ name }} さんの履歴書PDFが生成されました。</p>
+  <a class="btn" href="{{ url_for('download_public', pdf_id=pdf_id) }}">
+    📥 PDFをダウンロード
+  </a>
+  <br><br>
+  <a href="{{ url_for('index') }}">← フォームに戻る</a>
+</div>
+{% endblock %}

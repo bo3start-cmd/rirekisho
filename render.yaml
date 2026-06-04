@@ -1,6 +1,17 @@
 services:
   - type: web
-    name: rirekisho
+    name: resume-app
     env: python
-    buildCommand: "apt-get update && apt-get install -y fonts-dejavu-core fonts-droid-fallback && mkdir -p fonts && cp /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf fonts/ && cp /usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf fonts/ && pip install -r requirements.txt"
-    startCommand: "gunicorn app:app"
+    buildCommand: |
+      pip install -r requirements.txt
+      python setup_fonts.py
+    startCommand: gunicorn app:app
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_PASSWORD
+        value: admin1234
+    disk:
+      name: data
+      mountPath: /opt/render/project/src
+      sizeGB: 1

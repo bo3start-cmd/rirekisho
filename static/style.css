@@ -1,34 +1,70 @@
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:"Helvetica Neue",Arial,"Hiragino Kaku Gothic ProN",sans-serif;background:#f5f7fa;color:#222;font-size:15px;line-height:1.6}
+body{font-family:"Helvetica Neue",Arial,"Hiragino Kaku Gothic ProN",sans-serif;
+     background:#f5f7fa;color:#222;font-size:15px;line-height:1.6}
 header{background:#1a4b8c;color:#fff;padding:12px 24px}
-.hi{max-width:960px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
+.header-inner{max-width:960px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
 .logo{font-size:18px;font-weight:700}
-nav a{color:#cde;margin-left:20px;text-decoration:none}nav a:hover{color:#fff}
+nav a{color:#cde;margin-left:20px;text-decoration:none}
+nav a:hover{color:#fff}
 main{max-width:960px;margin:32px auto;padding:0 16px}
+
 .flash{background:#fee;border:1px solid #f00;border-radius:6px;padding:10px 16px;margin-bottom:16px;color:#c00}
-.form-wrap h1{margin-bottom:6px}.lead{color:#555;margin-bottom:24px}
-section{background:#fff;border-radius:10px;padding:20px 24px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
-section h2{font-size:15px;font-weight:700;color:#1a4b8c;margin-bottom:14px;padding-bottom:6px;border-bottom:2px solid #e0e8f5}
+
+/* フォーム */
+.form-wrap h1{margin-bottom:6px}
+.lead{color:#555;margin-bottom:24px}
+section{background:#fff;border-radius:10px;padding:20px 24px;margin-bottom:20px;
+        box-shadow:0 1px 4px rgba(0,0,0,.08)}
+section h2{font-size:15px;font-weight:700;color:#1a4b8c;margin-bottom:14px;
+           padding-bottom:6px;border-bottom:2px solid #e0e8f5}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px}
 .grid3{display:grid;grid-template-columns:200px 1fr;gap:8px}
-.field{display:flex;flex-direction:column;gap:4px}.field.full{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:4px}
+.field.full{grid-column:1/-1}
 .field.inline{flex-direction:row;align-items:center;gap:6px;flex-wrap:wrap}
 .field.inline label{white-space:nowrap;min-width:120px}
-label{font-size:13px;font-weight:600;color:#444}.req{color:#d00;font-size:11px;margin-left:4px}
-input[type=text],input[type=email],input[type=tel],input[type=number],select,textarea{border:1px solid #ccc;border-radius:6px;padding:8px 10px;font-size:14px;width:100%;outline:none;transition:border .2s}
+label{font-size:13px;font-weight:600;color:#444}
+.req{color:#d00;font-size:11px;margin-left:4px}
+input[type=text],input[type=email],input[type=tel],input[type=number],
+select,textarea{
+  border:1px solid #ccc;border-radius:6px;padding:8px 10px;font-size:14px;
+  width:100%;outline:none;transition:border .2s}
 input:focus,select:focus,textarea:focus{border-color:#1a4b8c}
 details{border:1px solid #e0e8f5;border-radius:8px;padding:10px 14px;margin-bottom:8px}
-summary{cursor:pointer;font-weight:600;color:#1a4b8c}small{font-size:12px;color:#888;margin-top:2px}
+summary{cursor:pointer;font-weight:600;color:#1a4b8c}
+small{font-size:12px;color:#888;margin-top:2px}
+
 .submit-area{text-align:center;margin:32px 0}
-.btn{display:inline-block;background:#1a4b8c;color:#fff;padding:10px 22px;border-radius:8px;border:none;cursor:pointer;text-decoration:none;font-size:14px;transition:background .2s}
-.btn:hover{background:#154080}.btn-large{padding:14px 40px;font-size:17px}.btn-sm{padding:5px 12px;font-size:12px}
+.btn{display:inline-block;background:#1a4b8c;color:#fff;padding:10px 22px;
+     border-radius:8px;border:none;cursor:pointer;text-decoration:none;font-size:14px;
+     transition:background .2s}
+.btn:hover{background:#154080}
+.btn-large{padding:14px 40px;font-size:17px}
+.btn-sm{padding:5px 12px;font-size:12px}
+
+/* 完了画面 */
 .card{background:#fff;border-radius:12px;padding:40px;box-shadow:0 2px 12px rgba(0,0,0,.1)}
-.center{text-align:center;max-width:480px;margin:0 auto}.card h1{font-size:28px;margin-bottom:12px}.card p{color:#555;margin-bottom:20px}
+.center{text-align:center;max-width:480px;margin:0 auto}
+.card h1{font-size:28px;margin-bottom:12px}
+.card p{color:#555;margin-bottom:20px}
+
+/* 管理画面 */
 .dashboard h2{margin-bottom:16px;color:#1a4b8c}
-.search-bar{display:flex;gap:10px;margin-bottom:20px}.search-bar input{flex:1;padding:9px 14px;border:1px solid #ccc;border-radius:8px;font-size:14px}
-table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.search-bar{display:flex;gap:10px;margin-bottom:20px}
+.search-bar input{flex:1;padding:9px 14px;border:1px solid #ccc;border-radius:8px;font-size:14px}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;
+      overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
 th{background:#1a4b8c;color:#fff;padding:11px 14px;text-align:left;font-size:13px}
-td{padding:10px 14px;border-bottom:1px solid #f0f0f0;font-size:14px}tr:last-child td{border-bottom:none}tr:hover td{background:#f8faff}
-.empty{color:#888;padding:20px 0}.card form label{display:block;margin-bottom:4px;font-weight:600;font-size:13px}
+td{padding:10px 14px;border-bottom:1px solid #f0f0f0;font-size:14px}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f8faff}
+.empty{color:#888;padding:20px 0}
+
+/* ログイン */
+.card form label{display:block;margin-bottom:4px;font-weight:600;font-size:13px}
 .card form input{width:100%;padding:9px 12px;border:1px solid #ccc;border-radius:6px;font-size:14px}
-@media(max-width:640px){.grid2{grid-template-columns:1fr}.field.full{grid-column:1}}
+
+@media(max-width:640px){
+  .grid2{grid-template-columns:1fr}
+  .field.full{grid-column:1}
+}
