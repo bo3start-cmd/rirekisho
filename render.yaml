@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: rirekisho
+    env: python
+    buildCommand: "apt-get update && apt-get install -y fonts-dejavu-core fonts-droid-fallback && mkdir -p fonts && cp /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf fonts/ && cp /usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf fonts/ && pip install -r requirements.txt"
+    startCommand: "gunicorn app:app"

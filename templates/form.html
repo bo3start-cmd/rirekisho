@@ -1,0 +1,52 @@
+{% extends "base.html" %}{% block title %}履歴書入力フォーム{% endblock %}
+{% block content %}
+<div class="form-wrap">
+<h1>履歴書入力フォーム</h1>
+<p class="lead">入力後に送信すると、JIS規格の履歴書PDFが自動生成されます。</p>
+<form method="post" action="/submit" enctype="multipart/form-data">
+<section><h2>基本情報</h2><div class="grid2">
+<div class="field"><label>氏名 <span class="req">必須</span></label><input type="text" name="name" required placeholder="堂山 芳文"></div>
+<div class="field"><label>ふりがな</label><input type="text" name="kana" placeholder="どうやま よしふみ"></div>
+<div class="field"><label>生年月日</label><input type="text" name="birth_date" placeholder="1999年3月7日"></div>
+<div class="field"><label>年齢</label><input type="number" name="age" placeholder="27"></div>
+<div class="field"><label>性別</label><select name="gender"><option value="男">男</option><option value="女">女</option></select></div>
+<div class="field"><label>電話番号</label><input type="tel" name="tel" placeholder="090-1234-5678"></div>
+<div class="field"><label>メールアドレス</label><input type="email" name="email" placeholder="example@gmail.com"></div>
+</div></section>
+<section><h2>住所</h2><div class="grid2">
+<div class="field"><label>郵便番号</label><input type="text" name="zip_code" placeholder="〒560-0014"></div>
+<div class="field"><label>住所ふりがな</label><input type="text" name="address_kana" placeholder="おおさかふ とよなかし"></div>
+<div class="field full"><label>現住所</label><input type="text" name="address" placeholder="大阪府豊中市熊野町2-1-5-302"></div>
+</div></section>
+<section><h2>証明写真</h2><div class="field">
+<label>写真（JPG / PNG）</label><input type="file" name="photo" accept="image/jpeg,image/png">
+<small>縦4cm×横3cmを目安。枠に自動調整します。</small></div></section>
+<section><h2>学歴</h2><div class="grid2">
+<div class="field"><label>高校名</label><input type="text" name="school_name" placeholder="○○高等学校"></div>
+<div class="field inline"><label>卒業年月</label><input type="number" name="school_grad_year" placeholder="2017" style="width:90px">年
+<select name="school_grad_month">{% for m in range(1,13) %}<option value="{{ m }}">{{ m }}</option>{% endfor %}</select>月</div>
+<div class="field"><label>大学・専門学校名</label><input type="text" name="college_name" placeholder="○○大学 / ○○専門学校"></div>
+<div class="field inline"><label>卒業年月</label><input type="number" name="college_grad_year" placeholder="2021" style="width:90px">年
+<select name="college_grad_month">{% for m in range(1,13) %}<option value="{{ m }}">{{ m }}</option>{% endfor %}</select>月</div>
+</div></section>
+<section><h2>職歴（最大5社）</h2>
+{% for i in range(1,6) %}<details {% if i==1 %}open{% endif %}><summary>{{ i }}社目</summary>
+<div class="grid2" style="margin-top:8px">
+<div class="field"><label>会社名</label><input type="text" name="company_{{ i }}" placeholder="株式会社○○"></div>
+<div class="field"><label>雇用形態</label><select name="job_type_{{ i }}"><option>正社員</option><option>パート社員</option><option>契約社員</option><option>アルバイト</option><option>個人事業主</option></select></div>
+<div class="field inline"><label>入社年月</label><input type="number" name="start_year_{{ i }}" placeholder="2021" style="width:90px">年
+<select name="start_month_{{ i }}">{% for m in range(1,13) %}<option value="{{ m }}">{{ m }}</option>{% endfor %}</select>月</div>
+<div class="field inline"><label>退社年月（在職中は空欄）</label><input type="number" name="end_year_{{ i }}" placeholder="2023" style="width:90px">年
+<select name="end_month_{{ i }}"><option value="">-</option>{% for m in range(1,13) %}<option value="{{ m }}">{{ m }}</option>{% endfor %}</select>月</div>
+<div class="field full"><label>担当業務・ポジション</label><input type="text" name="position_{{ i }}" placeholder="営業・接客など"></div>
+</div></details>{% endfor %}</section>
+<section><h2>免許・資格（最大6件）</h2>
+{% for i in range(1,7) %}<div class="grid3" style="margin-bottom:6px">
+<div class="field inline"><input type="number" name="lic_year_{{ i }}" placeholder="2018" style="width:80px">年
+<select name="lic_month_{{ i }}"><option value="">-</option>{% for m in range(1,13) %}<option value="{{ m }}">{{ m }}</option>{% endfor %}</select>月</div>
+<div class="field full"><input type="text" name="lic_name_{{ i }}" placeholder="普通自動車第一種運転免許　取得"></div>
+</div>{% endfor %}</section>
+<section><h2>志望動機・自己PR</h2><div class="field"><textarea name="pr_text" rows="6" placeholder="志望動機・特技・アピールポイントを入力してください"></textarea></div></section>
+<section><h2>本人希望欄</h2><div class="field"><textarea name="wish_text" rows="3" placeholder="希望職種・勤務地・給料など"></textarea></div></section>
+<div class="submit-area"><button type="submit" class="btn btn-large">📄 履歴書PDFを生成する</button></div>
+</form></div>{% endblock %}
